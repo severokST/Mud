@@ -1,0 +1,39 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Compiled binaries
+*.exe
+*.out
+mud_server
+
+# Object files
+*.o
+*.obj
+
+# Dependencies
+*.d
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data files (may contain sensitive user data)
+data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Temporary files
+*.tmp
+*.temp
