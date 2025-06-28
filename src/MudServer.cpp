@@ -1,4 +1,5 @@
 #include "MudServer.h"
+#include "Manager.h"
 #include "ClientConnection.h"
 #include "UserManager.h"
 #include "SessionManager.h"
@@ -13,6 +14,10 @@ MudServer::MudServer(int port)
     : m_port(port), m_serverSocket(-1), m_running(false) {
     m_userManager = std::make_unique<UserManager>();
     m_sessionManager = std::make_unique<SessionManager>();
+
+    // Register managers
+    RegisterManager(ManagerType::UserManager, m_userManager.get());
+    RegisterManager(ManagerType::SessionManager, m_sessionManager.get());
 }
 
 MudServer::~MudServer() {

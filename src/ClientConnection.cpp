@@ -1,8 +1,9 @@
 #include "ClientConnection.h"
-#include "User.h"
-#include "Session.h"
+#include "Manager.h"
 #include "UserManager.h"
 #include "SessionManager.h"
+#include "User.h"
+#include "Session.h"
 
 #include <iostream>
 #include <sstream>
@@ -115,13 +116,27 @@ void ClientConnection::handleAuthentication(const std::string& input) {
     // This is a simplified authentication flow
     // In a real implementation, you'd integrate with UserManager and SessionManager
 
+    UserManager* userManager = static_cast<UserManager*>(GetManager(ManagerType::UserManager));
+
+    // Check if UserManager is available - this is crucial for authentication
+    if (!userManager) {
+        sendMessage("Server error: UserManager not available.\n");
+        m_connected = false;
+        return;
+    }
+
     switch (m_state) {
         case ConnectionState::LOGIN_PROMPT:
             m_pendingUsername = input;
 
-
-            sendMessage("Password: ");
-            m_state = ConnectionState::PASSWORD_PROMPT;
+            // Check if user exists
+            if (userManager->userExists(m_pendingUsername)) {
+                sendMessage("User exists. Please enter your password: ");
+                m_state = ConnectionState::PASSWORD_PROMPT;
+            } else {
+                sendMessage("User does not exist. Would you like to create a new account? (yes/no): ");
+                m_state = ConnectionState::NEW_USER_CONFIRMATION;
+            }
             break;
             
         case ConnectionState::PASSWORD_PROMPT:
@@ -133,11 +148,19 @@ void ClientConnection::handleAuthentication(const std::string& input) {
             break;
             
         case ConnectionState::NEW_USER_CONFIRMATION:
-            // TODO: Handle new user creation
+            if (input == "yes") {
+                sendMessage("Please enter your desired password: ");
+                m_state = ConnectionState::NEW_PASSWORD_PROMPT;
+            } else {
+                m_state = ConnectionState::LOGIN_PROMPT;
+                sendMessage("Please enter another username: ");
+            }
             break;
             
         case ConnectionState::NEW_PASSWORD_PROMPT:
-            // TODO: Handle new user password setting
+            userManager->createUser(m_pendingUsername, input);
+            sendMessage("Password set successfully! You can now log in.\n");
+            m_state = ConnectionState::LOGIN_PROMPT;
             break;
             
         default:
