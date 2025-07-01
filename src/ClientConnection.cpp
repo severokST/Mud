@@ -131,7 +131,7 @@ void ClientConnection::handleAuthentication(const std::string& input) {
 
             // Check if user exists
             if (userManager->userExists(m_pendingUsername)) {
-                sendMessage("User exists. Please enter your password: ");
+                sendMessage("Welcome back. Please enter your password: ");
                 m_state = ConnectionState::PASSWORD_PROMPT;
             } else {
                 sendMessage("User does not exist. Would you like to create a new account? (yes/no): ");
@@ -140,13 +140,16 @@ void ClientConnection::handleAuthentication(const std::string& input) {
             break;
             
         case ConnectionState::PASSWORD_PROMPT:
-            // TODO: Integrate with UserManager for actual authentication
-            sendMessage("Login successful!\n");
-            sendMessage("Welcome to the MUD, " + m_pendingUsername + "!\n");
-            m_state = ConnectionState::AUTHENTICATED;
-            sendPrompt();
+            m_currentUser = userManager->authenticateUser(m_pendingUsername, input);
+            if (m_currentUser) {
+                sendMessage("Login successful!\n");
+                sendMessage("Welcome back, " + m_pendingUsername + "!\n");
+                m_state = ConnectionState::AUTHENTICATED;
+            } else {
+                sendMessage("Invalid password. Please try again: ");
+            }
             break;
-            
+
         case ConnectionState::NEW_USER_CONFIRMATION:
             if (input == "yes") {
                 sendMessage("Please enter your desired password: ");

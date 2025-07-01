@@ -4,9 +4,7 @@
 #include <iomanip>
 
 User::User(const std::string& username, const std::string& passwordHash)
-    : m_username(username), m_passwordHash(passwordHash) {
-    m_createdTime = std::chrono::system_clock::now();
-    m_lastLoginTime = m_createdTime;
+{
 }
 
 bool User::verifyPassword(const std::string& password) const {
@@ -15,7 +13,14 @@ bool User::verifyPassword(const std::string& password) const {
     return m_passwordHash == password;
 }
 
-void User::updateLastLogin() {
+void User::createUser(const std::string& username, const std::string& password) {
+    m_username = username;
+    m_passwordHash = password; // In production, hash the password
+    m_createdTime = std::chrono::system_clock::now();
+    m_lastLoginTime = m_createdTime;
+}
+
+void User::loginUser() {
     m_lastLoginTime = std::chrono::system_clock::now();
 }
 

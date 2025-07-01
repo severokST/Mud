@@ -13,13 +13,30 @@ UserManager::~UserManager() {
     saveUsers();
 }
 
-std::shared_ptr<User> UserManager::authenticateUser(const std::string& username, const std::string& password) {
+std::shared_ptr<User> UserManager::loginUser(const std::string& username, const std::string& password) {
+    // Load user if not already loaded
+    if (!loadUser(username)) {
+        return nullptr; // User does not exist or failed to load
+    }
+
+    // Authenticate user
+    if (authenticateUser(username, password)) {
+        m_users[username]->loginUser();
+        return m_users[username];
+    }
+
+    // If authentication fails, remove user and return nullptr
+    removeUser(username);
+    return nullptr;
+}
+
+bool UserManager::authenticateUser(const std::string& username, const std::string& password) {
     std::lock_guard<std::mutex> lock(m_usersMutex);
     
     auto it = m_users.find(username);
     if (it != m_users.end()) {
         if (it->second->verifyPassword(password)) {
-            it->second->updateLastLogin();
+            it->second->loginUser();
             return it->second;
         }
     }
@@ -52,40 +69,75 @@ std::shared_ptr<User> UserManager::createUser(const std::string& username, const
     return user;
 }
 
-bool UserManager::userExists(const std::string& username) const {
+eUserStatus_t UserManager::userExists(const std::string& username) const {
     std::lock_guard<std::mutex> lock(m_usersMutex);
-    return m_users.find(username) != m_users.end();
+
+    // Check if user exists in the map if they are already logged in
+    if (m_users.find(username) != m_users.end()) {
+        return USER_STATUS_ACTIVE; // User is loaded and active
+    }
+
+    // Otherwise check if the user file exists
+    std::string filePath = getUserFilePath(username);
+    if (std::filesystem::exists(filePath)) {
+        return USER_STATUS_INACTIVE; // User exists but not loaded
+    }
+
+    return USER_STATUS_DOES_NOT_EXIST; // User does not exist
 }
 
-bool UserManager::loadUsers() {
+/**
+ * @brief Loads a user from the file system.
+ *  - User is loaded on login or when explicitly requested.
+ * 
+ * @param username The username of the user to load.
+ * @return true if the user was loaded successfully, false otherwise.
+ */
+bool UserManager::loadUser(const std::string& username) {
     std::lock_guard<std::mutex> lock(m_usersMutex);
     
-    if (!std::filesystem::exists(m_dataDirectory)) {
-        return true; // No users to load, but that's okay
+    // Check if user is already loaded
+    if (m_users.find(username) != m_users.end()) {
+        return true;
     }
     
-    try {
-        for (const auto& entry : std::filesystem::directory_iterator(m_dataDirectory)) {
-            if (entry.is_regular_file() && entry.path().extension() == ".user") {
-                std::ifstream file(entry.path());
-                if (file.is_open()) {
-                    std::string content((std::istreambuf_iterator<char>(file)),
-                                       std::istreambuf_iterator<char>());
-                    file.close();
-                    
-                    auto user = User::deserialize(content);
-                    if (user) {
-                        m_users[user->getUsername()] = std::move(user);
-                    }
-                }
-            }
+    // Load user from file
+    std::string filePath = getUserFilePath(username);
+    if (!std::filesystem::exists(filePath)) {
+        return false; // User file does not exist
+    }   
+
+    std::ifstream file(filePath);
+    if (file.is_open()) {
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        file.close();
+
+        auto user = User::deserialize(content);
+        if (user) {
+            m_users[username] = std::move(user);
+            return true;
         }
-        return true;
-    } catch (const std::exception& e) {
-        std::cerr << "Error loading users: " << e.what() << std::endl;
-        return false;
     }
+
+    return false;
 }
+
+bool UserManager::removeUser(const std::string& username) {
+    std::lock_guard<std::mutex> lock(m_usersMutex);
+    
+    // Check if user exists
+    auto it = m_users.find(username);
+    if (it == m_users.end()) {
+        return false; // User does not exist
+    }
+    
+    // Remove user from map 
+    m_users.erase(it);
+    
+    return true;
+}
+
 
 bool UserManager::saveUsers() {
     std::lock_guard<std::mutex> lock(m_usersMutex);

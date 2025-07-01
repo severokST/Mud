@@ -20,7 +20,8 @@ public:
     
     // Authentication
     bool verifyPassword(const std::string& password) const;
-    void updateLastLogin();
+    void createUser(const std::string& username, const std::string& password);
+    void loginUser();
     
     // Serialization
     std::string serialize() const;

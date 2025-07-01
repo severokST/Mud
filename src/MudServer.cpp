@@ -60,11 +60,6 @@ bool MudServer::start() {
         return false;
     }
 
-    // Load user data
-    if (!m_userManager->loadUsers()) {
-        std::cout << "Warning: Could not load existing user data" << std::endl;
-    }
-
     m_running = true;
     std::cout << "MUD Server started on port " << m_port << std::endl;
     return true;
